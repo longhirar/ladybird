@@ -1,4 +1,4 @@
-name: Build macOS (Intel)
+name: Build macOS (Intel - AppKit)
 
 on:
   push:
@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # Use macos-13 runner as it is Intel-based and has more RAM and CPU cores.
+    runs-on: macos-13
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -16,22 +18,35 @@ jobs:
       - name: Install Homebrew dependencies
         run: |
           brew update
-          brew install autoconf autoconf-archive automake ccache cmake nasm ninja pkg-config llvm@19 qt
+          brew install autoconf autoconf-archive automake ccache cmake nasm ninja pkg-config llvm@19
 
-      - name: Build Ladybird using Meta/ladybird.sh
+      - name: Build Ladybird using Meta/ladybird.sh (force Intel build, AppKit chrome)
         env:
           # Use clang from Homebrew's llvm@19 so that a C++23–capable compiler is used.
           CC: "$(brew --prefix llvm@19)/bin/clang"
           CXX: "$(brew --prefix llvm@19)/bin/clang++"
+          # Force the build to target Intel (x86_64) even on Apple Silicon hosts.
+          CMAKE_OSX_ARCHITECTURES: x86_64
         run: |
-          # Ensure the script is executable.
           chmod +x Meta/ladybird.sh
-          # Use the "build" subcommand to only compile the project (without running it).
-          ./Meta/ladybird.sh build
+          # Pass -DENABLE_QT=OFF to ensure that the AppKit chrome (the default native chrome on macOS) is used.
+          ./Meta/ladybird.sh build -DENABLE_QT=OFF
+
+      - name: Verify build output architecture
+        run: |
+          BINARY="Build/release/bin/Ladybird"
+          if [ -f "$BINARY" ]; then
+            echo "Build successful: Found Ladybird binary."
+            echo "Checking binary architecture:"
+            lipo -info "$BINARY"
+          else
+            echo "Ladybird binary not found!" >&2
+            exit 1
+          fi
 
       - name: Upload Ladybird.app artifact
         uses: actions/upload-artifact@v4
         with:
           name: Ladybird.app
-          # The build instructions indicate that the app is placed at Build/release/bin/Ladybird.app on macOS.
+          # The built app bundle is expected in Build/release/bin.
           path: Build/release/bin/Ladybird.app
