@@ -30,7 +30,7 @@ jobs:
           ./Meta/ladybird.sh build
 
       - name: Upload Ladybird.app artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Ladybird.app
           # The build instructions indicate that the app is placed at Build/release/bin/Ladybird.app on macOS.
