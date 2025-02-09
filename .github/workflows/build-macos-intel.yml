@@ -1,0 +1,37 @@
+name: Build macOS (Intel)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Homebrew dependencies
+        run: |
+          brew update
+          brew install autoconf autoconf-archive automake ccache cmake nasm ninja pkg-config llvm@19 qt
+
+      - name: Build Ladybird using Meta/ladybird.sh
+        env:
+          # Use clang from Homebrew's llvm@19 so that a C++23–capable compiler is used.
+          CC: "$(brew --prefix llvm@19)/bin/clang"
+          CXX: "$(brew --prefix llvm@19)/bin/clang++"
+        run: |
+          # Ensure the script is executable.
+          chmod +x Meta/ladybird.sh
+          # Use the "build" subcommand to only compile the project (without running it).
+          ./Meta/ladybird.sh build
+
+      - name: Upload Ladybird.app artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Ladybird.app
+          # The build instructions indicate that the app is placed at Build/release/bin/Ladybird.app on macOS.
+          path: Build/release/bin/Ladybird.app
